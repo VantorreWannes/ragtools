@@ -1,0 +1,58 @@
+[project]
+name = "ragtools"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Wannes Vantorre", email = "vantorrewannes@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "chestkey>=0.3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/VantorreWannes/ragtools"
+Repository = "https://github.com/VantorreWannes/ragtools"
+Issues = "https://github.com/VantorreWannes/ragtools/issues"
+Changelog = "https://github.com/VantorreWannes/ragtools/releases"
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.7",
+    "ty>=0.0.80",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "smoke",
+    "unit",
+    "integration",
+    "application",
+]
+
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[project.optional-dependencies]
+cpu = [
+  "torch>=2.13.0",
+  "torchvision>=0.28.0",
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", extra = "cpu" },
+]
+torchvision = [
+  { index = "pytorch-cpu", extra = "cpu" },
+]
