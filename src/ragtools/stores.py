@@ -103,7 +103,7 @@ class CachedStore[K, V: object](BaseStore[K, V]):
         return key in self.store
 
 
-class FileStore[K, V](BaseStore[K, V]):
+class FileStore[K, V: object](BaseStore[K, V]):
     """Store persisting all entries in a single dill file."""
 
     def __init__(self, path: Path) -> None:
