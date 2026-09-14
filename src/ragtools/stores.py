@@ -80,9 +80,7 @@ class CachedStore[K, V: object](BaseStore[K, V]):
         cache_key = Key[V](key)
         if self.chest.contains(cache_key):
             return self.chest.get(cache_key)
-        value = self.store[key]
-        self.chest.set(cache_key, value)
-        return value
+        return self.store[key]
 
     def __setitem__(self, key: K, value: V) -> None:
         self.store[key] = value
@@ -104,7 +102,7 @@ class CachedStore[K, V: object](BaseStore[K, V]):
 
 
 class FileStore[K, V: object](BaseStore[K, V]):
-    """Store persisting all entries in a single dill file."""
+    """Store persisting all entries in a single dill file, re-read and rewritten per call."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
