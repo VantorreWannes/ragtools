@@ -1,144 +1,120 @@
-from abc import ABC, abstractmethod
-from collections.abc import Iterator
-from pathlib import Path
+"""Stores: MutableMapping implementations to compose into systems."""
+
+from collections.abc import Callable, Iterator, MutableMapping
 
 import dill
 from chestkey import Chest, Key
 
 
-class BaseStore[K, V](ABC):
-    """Key-value store."""
+class ChestStore[K, V](MutableMapping[K, V]):
+    """Store persisting every entry in a chestkey ``Chest``, one file per key."""
 
-    def keys(self) -> list[K]:
-        return list(self)
-
-    def get(self, key: K) -> V:
-        return self[key]
-
-    def set(self, key: K, value: V) -> None:
-        self[key] = value
-
-    def delete(self, key: K) -> None:
-        del self[key]
-
-    def clear(self) -> None:
-        for key in self.keys():
-            del self[key]
-
-    @abstractmethod
-    def __getitem__(self, key: K) -> V: ...
-
-    @abstractmethod
-    def __setitem__(self, key: K, value: V) -> None: ...
-
-    @abstractmethod
-    def __delitem__(self, key: K) -> None: ...
-
-    @abstractmethod
-    def __iter__(self) -> Iterator[K]: ...
-
-    @abstractmethod
-    def __len__(self) -> int: ...
-
-    @abstractmethod
-    def __contains__(self, key: K) -> bool: ...
-
-
-class MemoryStore[K, V](BaseStore[K, V]):
-    """Store keeping values in a plain dict."""
-
-    def __init__(self) -> None:
-        self._data: dict[K, V] = {}
+    def __init__(self, chest: Chest) -> None:
+        self._chest = chest
 
     def __getitem__(self, key: K) -> V:
-        return self._data[key]
+        return self._chest.get(Key[tuple[K, V]](key))[1]
 
     def __setitem__(self, key: K, value: V) -> None:
-        self._data[key] = value
+        self._chest.set(Key[tuple[K, V]](key), (key, value))
 
     def __delitem__(self, key: K) -> None:
-        del self._data[key]
+        self._chest.delete(Key(key))
+
+    def __contains__(self, key: object) -> bool:
+        return self._chest.contains(Key(key))
 
     def __iter__(self) -> Iterator[K]:
-        return iter(self._data)
+        for path in self._chest.path.glob("*"):
+            yield dill.loads(path.read_bytes())[0]
 
     def __len__(self) -> int:
-        return len(self._data)
-
-    def __contains__(self, key: K) -> bool:
-        return key in self._data
+        return sum(1 for _ in self)
 
 
-class CachedStore[K, V: object](BaseStore[K, V]):
-    """Read-through cache in front of another store."""
+class CachedStore[K, V](MutableMapping[K, V]):
+    """Write-through cache in front of another store."""
 
-    def __init__(self, inner: BaseStore[K, V], chest: Chest) -> None:
-        self.store = inner
-        self.chest = chest
+    def __init__(self, store: MutableMapping[K, V], chest: Chest) -> None:
+        self._store = store
+        self._chest = chest
 
     def __getitem__(self, key: K) -> V:
         cache_key = Key[V](key)
-        if self.chest.contains(cache_key):
-            return self.chest.get(cache_key)
-        return self.store[key]
+        if self._chest.contains(cache_key):
+            return self._chest.get(cache_key)
+        return self._store[key]
 
     def __setitem__(self, key: K, value: V) -> None:
-        self.store[key] = value
-        self.chest.set(Key[V](key), value)
+        self._store[key] = value
+        self._chest.set(Key[V](key), value)
 
     def __delitem__(self, key: K) -> None:
-        cache_key = Key[V](key)
-        del self.store[key]
-        self.chest.delete(cache_key)
+        del self._store[key]
+        self._chest.delete(Key(key))
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._store
 
     def __iter__(self) -> Iterator[K]:
-        return iter(self.store)
+        return iter(self._store)
 
     def __len__(self) -> int:
-        return len(self.store)
-
-    def __contains__(self, key: K) -> bool:
-        return key in self.store
+        return len(self._store)
 
 
-class FileStore[K, V: object](BaseStore[K, V]):
-    """Store persisting all entries in a single dill file, re-read and rewritten per call."""
+class PrefixStore[V](MutableMapping[str, V]):
+    """Store view namespacing all keys with a prefix."""
 
-    def __init__(self, path: Path) -> None:
-        self._path = path
+    def __init__(self, store: MutableMapping[str, V], prefix: str) -> None:
+        self._store = store
+        self._prefix = prefix
 
-    def _read(self) -> dict[K, V]:
-        if not self._path.exists():
-            return {}
-        return dill.loads(self._path.read_bytes())
+    def __getitem__(self, key: str) -> V:
+        return self._store[self._prefix + key]
 
-    def _write(self, data: dict[K, V]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self._path.with_suffix(self._path.suffix + ".tmp")
-        tmp.write_bytes(dill.dumps(data))
-        tmp.replace(self._path)
+    def __setitem__(self, key: str, value: V) -> None:
+        self._store[self._prefix + key] = value
 
-    def __getitem__(self, key: K) -> V:
-        return self._read()[key]
+    def __delitem__(self, key: str) -> None:
+        del self._store[self._prefix + key]
 
-    def __setitem__(self, key: K, value: V) -> None:
-        data = self._read()
-        data[key] = value
-        self._write(data)
+    def __contains__(self, key: object) -> bool:
+        return isinstance(key, str) and self._prefix + key in self._store
+
+    def __iter__(self) -> Iterator[str]:
+        return (
+            k[len(self._prefix) :] for k in self._store if k.startswith(self._prefix)
+        )
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+
+class MappedStore[K, V, W](MutableMapping[K, W]):
+    """Store view transforming values on the way in and out."""
+
+    def __init__(
+        self,
+        store: MutableMapping[K, V],
+        encode: Callable[[W], V],
+        decode: Callable[[V], W],
+    ) -> None:
+        self._store = store
+        self._encode = encode
+        self._decode = decode
+
+    def __getitem__(self, key: K) -> W:
+        return self._decode(self._store[key])
+
+    def __setitem__(self, key: K, value: W) -> None:
+        self._store[key] = self._encode(value)
 
     def __delitem__(self, key: K) -> None:
-        data = self._read()
-        del data[key]
-        self._write(data)
+        del self._store[key]
 
     def __iter__(self) -> Iterator[K]:
-        return iter(self._read())
+        return iter(self._store)
 
     def __len__(self) -> int:
-        return len(self._read())
-
-    def __contains__(self, key: K) -> bool:
-        return key in self._read()
-
-    def clear(self) -> None:
-        self._write({})
+        return len(self._store)
