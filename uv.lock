@@ -403,6 +403,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "chestkey" },
+    { name = "dill" },
 ]
 
 [package.optional-dependencies]
@@ -424,6 +425,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "chestkey", specifier = ">=0.3.0" },
+    { name = "dill", specifier = ">=0.4.1" },
     { name = "torch", marker = "extra == 'cpu'", specifier = ">=2.13.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "ragtools", extra = "cpu" } },
     { name = "torchvision", marker = "extra == 'cpu'", specifier = ">=0.28.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "ragtools", extra = "cpu" } },
 ]
