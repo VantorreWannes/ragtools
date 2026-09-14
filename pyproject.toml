@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
-    "chestkey>=0.3.0",
+    "blake3>=1.0.9",
     "dill>=0.4.1",
     "unstructured-inference>=1.6.13",
     "unstructured[csv,md,pdf]>=0.27.5",

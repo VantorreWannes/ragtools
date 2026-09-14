@@ -304,19 +304,6 @@ wheels = [
 ]
 
 [[package]]
-name = "chestkey"
-version = "0.3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "blake3" },
-    { name = "dill" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/44/28/7002fdf5fc17b53da32dd12e517086752a9eab88980aad856d5211569abb/chestkey-0.3.0.tar.gz", hash = "sha256:5a87088d9c9470d18033b514e9d0897ade6b3f24e64f338da3f27f24b8f46ad9", size = 2952, upload-time = "2026-09-14T06:31:46.299Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/f0/b44e22f5b73e185a9ac5733ad40433acf16c4ac1859c30dcbb6a9dab471c/chestkey-0.3.0-py3-none-any.whl", hash = "sha256:3fe0e8bff3d60d443561b4dd46f02986da8ce5f02427e28f3e46391a564824f3", size = 3746, upload-time = "2026-09-14T06:31:44.912Z" },
-]
-
-[[package]]
 name = "click"
 version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1960,7 +1947,7 @@ name = "ragtools"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "chestkey" },
+    { name = "blake3" },
     { name = "dill" },
     { name = "unstructured", extra = ["csv", "md", "pdf"] },
     { name = "unstructured-inference" },
@@ -1984,7 +1971,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chestkey", specifier = ">=0.3.0" },
+    { name = "blake3", specifier = ">=1.0.9" },
     { name = "dill", specifier = ">=0.4.1" },
     { name = "torch", marker = "extra == 'cpu'", specifier = ">=2.13.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "ragtools", extra = "cpu" } },
     { name = "torchvision", marker = "extra == 'cpu'", specifier = ">=0.28.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "ragtools", extra = "cpu" } },
