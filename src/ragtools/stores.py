@@ -1,8 +1,4 @@
-# from collections.abc import Callable, Iterator, MutableMapping
-
-# import dill
-# from chestkey import Chest, Key
-
+import builtins
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -16,7 +12,7 @@ class Store[K, V](Protocol):
     def get(self, key: K) -> V: ...
     def delete(self, key: K) -> None: ...
     def contains(self, key: K) -> bool: ...
-    def keys(self, key: K) -> set[K]: ...
+    def keys(self) -> builtins.set[K]: ...
 
 
 @dataclass(slots=True)
@@ -38,7 +34,7 @@ class MemoryStore[K, V]:
     def contains(self, key: K) -> bool:
         return key in self.items
 
-    def keys(self) -> set[K]:
+    def keys(self) -> builtins.set[K]:
         return set(self.items.keys())
 
 
@@ -72,7 +68,7 @@ class FileStore[K, V]:
         items = self._load_items()
         return key in items
 
-    def keys(self) -> set[K]:
+    def keys(self) -> builtins.set[K]:
         items = self._load_items()
         return set(items.keys())
 
@@ -80,7 +76,10 @@ class FileStore[K, V]:
 @dataclass(slots=True)
 class DirectoryStore[K, V]:
     directory: Path
-    _keys: set[K] = field(init=False)
+    _keys: builtins.set[K] = field(init=False)
+
+    def __post_init__(self):
+        self._keys = set()
 
     def _file_path(self, key: K) -> Path:
         return self.directory / blake3.blake3(dill.dumps(key)).hexdigest()
@@ -108,5 +107,5 @@ class DirectoryStore[K, V]:
         path = self._file_path(key)
         return path.is_file()
 
-    def keys(self) -> set[K]:
+    def keys(self) -> builtins.set[K]:
         return self._keys

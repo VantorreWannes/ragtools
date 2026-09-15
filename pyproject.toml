@@ -10,6 +10,10 @@ requires-python = ">=3.14"
 dependencies = [
     "blake3>=1.0.9",
     "dill>=0.4.1",
+    "semantic-chunker>=0.2.0",
+    "sentence-transformers>=6.0.1",
+    "tokenizers>=0.23.2",
+    "transformers>=5.17.0",
     "unstructured-inference>=1.6.13",
     "unstructured[csv,md,pdf]>=0.27.5",
 ]
