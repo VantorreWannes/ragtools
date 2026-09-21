@@ -1,5 +1,5 @@
 import builtins
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -17,9 +17,9 @@ class Store[K, V](Protocol):
 
 @dataclass(slots=True)
 class MemoryStore[K, V]:
-    items: dict[K, V] = field(init=False)
+    items: dict[K, V]
 
-    def __post_init__(self):
+    def __init__(self) -> None:
         self.items = {}
 
     def set(self, key: K, value: V) -> None:
@@ -43,12 +43,15 @@ class FileStore[K, V]:
     file: Path
 
     def _load_items(self) -> dict[K, V]:
+        if not self.file.is_file():
+            return {}
         with self.file.open("rb") as f:
             return dill.load(f)
 
     def _save_items(self, items: dict[K, V]) -> None:
+        self.file.parent.mkdir(parents=True, exist_ok=True)
         with self.file.open("wb") as f:
-            return dill.dump(items, f)
+            dill.dump(items, f)
 
     def set(self, key: K, value: V) -> None:
         items = self._load_items()
@@ -76,36 +79,40 @@ class FileStore[K, V]:
 @dataclass(slots=True)
 class DirectoryStore[K, V]:
     directory: Path
-    _keys: builtins.set[K] = field(init=False)
-
-    def __post_init__(self):
-        self._keys = set()
 
     def _file_path(self, key: K) -> Path:
         return self.directory / blake3.blake3(dill.dumps(key)).hexdigest()
 
     def set(self, key: K, value: V) -> None:
         path = self._file_path(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self._keys.add(key)
+        self.directory.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as f:
-            return dill.dump(value, f)
+            dill.dump((key, value), f)
 
     def get(self, key: K) -> V:
         path = self._file_path(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.is_file():
+            raise KeyError(key)
         with path.open("rb") as f:
-            return dill.load(f)
+            _, value = dill.load(f)
+            return value
 
     def delete(self, key: K) -> None:
         path = self._file_path(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.unlink(missing_ok=True)
-        self._keys.remove(key)
+        if not path.is_file():
+            raise KeyError(key)
+        path.unlink()
 
     def contains(self, key: K) -> bool:
-        path = self._file_path(key)
-        return path.is_file()
+        return self._file_path(key).is_file()
 
     def keys(self) -> builtins.set[K]:
-        return self._keys
+        if not self.directory.is_dir():
+            return set()
+        keys_set: set[K] = set()
+        for file in self.directory.iterdir():
+            if file.is_file():
+                with file.open("rb") as f:
+                    stored_key, _ = dill.load(f)
+                    keys_set.add(stored_key)
+        return keys_set

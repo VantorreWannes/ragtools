@@ -9,7 +9,7 @@ class Embedder[E](Protocol):
     def embed(self, chunk: str) -> E: ...
 
 
-@dataclass(slots=True)
+@dataclass
 class SentenceTransformerEmbedder:
     model_name: str
 
@@ -21,7 +21,7 @@ class SentenceTransformerEmbedder:
         return self.model.encode(chunk, normalize_embeddings=True).tolist()
 
 
-@dataclass(slots=True)
+@dataclass
 class SpladeEmbedder:
     model_name: str
 

@@ -9,7 +9,7 @@ class Generator(Protocol):
     def prompt(self, query: str) -> str: ...
 
 
-@dataclass(slots=True)
+@dataclass
 class TransformersGenerator:
     model_name: str
     max_new_tokens: int

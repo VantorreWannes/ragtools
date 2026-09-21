@@ -51,8 +51,7 @@ class ElementPageIndexParser:
         page_index = data.metadata.page_number
         return page_index if page_index is not None else -1
 
-
-@dataclass(slots=True)
+@dataclass
 class ChunkParser:
     model_name: str
     chunk_size: int

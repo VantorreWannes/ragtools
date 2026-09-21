@@ -1,6 +1,5 @@
 import builtins
 from collections.abc import Hashable
-from dataclasses import dataclass
 from typing import Protocol
 
 import faiss
@@ -14,7 +13,6 @@ class Index[K, V](Store[K, V], Protocol):
     def closest(self, key: K, k: int) -> tuple[K, ...]: ...
 
 
-@dataclass(slots=True)
 class FaissEmbeddingIndex:
     def __init__(self, dimensions: int) -> None:
         self._index = faiss.IndexIDMap2(faiss.IndexFlatL2(dimensions))
@@ -61,7 +59,6 @@ class FaissEmbeddingIndex:
         return self.contains(key)
 
 
-@dataclass(slots=True)
 class SparseEmbeddingIndex[K: Hashable]:
     def __init__(self) -> None:
         self._data = np.empty(0, dtype=np.float32)
@@ -75,8 +72,13 @@ class SparseEmbeddingIndex[K: Hashable]:
     def set(self, key: K, value: dict[str, float]) -> None:
         self.delete(key)
         clean = {t: w for t, w in value.items() if w}
-        cols = [self._vocab.setdefault(t, len(self._vocab)) for t in clean]
-        self._tokens.extend(t for t in clean if self._vocab[t] == len(self._tokens))
+        cols = []
+        for t in clean:
+            if t not in self._vocab:
+                self._vocab[t] = len(self._tokens)
+                self._tokens.append(t)
+            cols.append(self._vocab[t])
+
         self._data = np.concatenate(
             [self._data, np.fromiter(clean.values(), np.float32, len(clean))]
         )
@@ -88,6 +90,8 @@ class SparseEmbeddingIndex[K: Hashable]:
         self._rows.append(key)
 
     def get(self, key: K) -> dict[str, float]:
+        if key not in self._row_of:
+            raise KeyError(key)
         r = self._row_of[key]
         start, end = int(self._indptr[r]), int(self._indptr[r + 1])
         return {
@@ -121,7 +125,7 @@ class SparseEmbeddingIndex[K: Hashable]:
     def closest(self, key: K, k: int) -> tuple[K, ...]:
         if key not in self._row_of:
             raise KeyError(key)
-        if k <= 0 or len(self._rows) <= 1:
+        if k <= 0 or len(self._rows) <= 1 or len(self._vocab) == 0:
             return ()
         r = self._row_of[key]
         start, end = int(self._indptr[r]), int(self._indptr[r + 1])

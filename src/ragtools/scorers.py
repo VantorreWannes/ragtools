@@ -9,7 +9,7 @@ class Scorer(Protocol):
     def score(self, query: str, chunk: str) -> float: ...
 
 
-@dataclass(slots=True)
+@dataclass
 class CrossEncoderScorer:
     model_name: str
 
@@ -18,4 +18,4 @@ class CrossEncoderScorer:
         return CrossEncoder(self.model_name)
 
     def score(self, query: str, chunk: str) -> float:
-        return self.model.predict((query, chunk)).tolist()
+        return float(self.model.predict((query, chunk)).tolist())
