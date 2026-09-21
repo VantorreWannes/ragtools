@@ -11,7 +11,7 @@ from ragtools.stores import Store
 
 
 class Index[K, V](Store[K, V], Protocol):
-    def closest(self, key: K, k: int) -> tuple[K]: ...
+    def closest(self, key: K, k: int) -> tuple[K, ...]: ...
 
 
 @dataclass(slots=True)
