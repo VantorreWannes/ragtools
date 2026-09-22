@@ -138,11 +138,11 @@ class SparseEmbeddingIndex[K: Hashable]:
     def keys(self) -> builtins.set[K]:
         return builtins.set(self._row_of)
 
-    def closest(self, key: K, k: int) -> tuple[K, ...]:
+    def closest(self, key: K, k: int) -> list[K]:
         if key not in self._row_of:
             raise KeyError(key)
         if k <= 0 or len(self._rows) <= 1 or len(self._vocab) == 0:
-            return ()
+            return []
         r = self._row_of[key]
         start, end = int(self._indptr[r]), int(self._indptr[r + 1])
         q = np.zeros(len(self._vocab), dtype=np.float32)
@@ -153,7 +153,7 @@ class SparseEmbeddingIndex[K: Hashable]:
         k_eff = min(k, len(self._rows) - 1)
         top = np.argpartition(-scores, k_eff - 1)[:k_eff]
         top = top[np.argsort(-scores[top], kind="stable")]
-        return tuple(self._rows[i] for i in top if scores[i] != -np.inf)
+        return [self._rows[i] for i in top if scores[i] != -np.inf]
 
     @property
     def _matrix(self) -> csr_matrix:
