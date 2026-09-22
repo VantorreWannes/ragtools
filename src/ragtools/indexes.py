@@ -1,4 +1,5 @@
 import builtins
+import itertools
 from collections.abc import Hashable
 from typing import Protocol
 
@@ -10,53 +11,68 @@ from ragtools.stores import Store
 
 
 class Index[K, V](Store[K, V], Protocol):
-    def closest(self, key: K, k: int) -> tuple[K, ...]: ...
+    def closest(self, key: K, k: int) -> list[K]: ...
 
 
-class FaissEmbeddingIndex:
+class FaissEmbeddingIndex[K: Hashable]:
     def __init__(self, dimensions: int) -> None:
         self._index = faiss.IndexIDMap2(faiss.IndexFlatL2(dimensions))
-        self._ids: builtins.set[int] = builtins.set()
+        self._key_to_id: dict[K, int] = {}
+        self._id_to_key: dict[int, K] = {}
+        self._id_counter = itertools.count()
 
-    def set(self, key: int, value: list[float]) -> None:
+    def set(self, key: K, value: list[float]) -> None:
         self.delete(key)
+
+        faiss_id = next(self._id_counter)
         self._index.add_with_ids(
             np.ascontiguousarray([value], dtype=np.float32),
-            np.array([key], dtype=np.int64),
+            np.array([faiss_id], dtype=np.int64),
         )
-        self._ids.add(key)
+        self._key_to_id[key] = faiss_id
+        self._id_to_key[faiss_id] = key
 
-    def get(self, key: int) -> list[float]:
-        if key not in self._ids:
+    def get(self, key: K) -> list[float]:
+        faiss_id = self._key_to_id.get(key)
+        if faiss_id is None:
             raise KeyError(key)
-        return self._index.reconstruct(key).tolist()
+        return self._index.reconstruct(faiss_id).tolist()
 
-    def delete(self, key: int) -> None:
-        if key in self._ids:
-            ids = np.array([key], dtype=np.int64)
+    def delete(self, key: K) -> None:
+        if key in self._key_to_id:
+            faiss_id = self._key_to_id.pop(key)
+            del self._id_to_key[faiss_id]
+
+            ids = np.array([faiss_id], dtype=np.int64)
             self._index.remove_ids(faiss.IDSelectorBatch(len(ids), faiss.swig_ptr(ids)))
-            self._ids.discard(key)
 
-    def contains(self, key: int) -> bool:
-        return key in self._ids
+    def contains(self, key: K) -> bool:
+        return key in self._key_to_id
 
-    def keys(self) -> builtins.set[int]:
-        return builtins.set(self._ids)
+    def keys(self) -> set[K]:
+        return set(self._key_to_id.keys())
 
-    def closest(self, key: int, k: int) -> tuple[int, ...]:
+    def closest(self, key: K, k: int) -> list[K]:
         if k <= 0 or self._index.ntotal == 0:
-            return ()
-        if key not in self._ids:
+            return []
+        faiss_id = self._key_to_id.get(key)
+        if faiss_id is None:
             raise KeyError(key)
-        vec = self._index.reconstruct(key)[None]
+
+        vec = self._index.reconstruct(faiss_id)[None]
         _, ids = self._index.search(vec, min(k + 1, self._index.ntotal))
-        return tuple(int(fid) for fid in ids[0] if fid != -1 and int(fid) != key)[:k]
+
+        return [
+            self._id_to_key[int(fid.item())]
+            for fid in ids[0]
+            if int(fid.item()) != -1 and int(fid.item()) != faiss_id
+        ][:k]
 
     def __len__(self) -> int:
         return self._index.ntotal
 
-    def __contains__(self, key: int) -> bool:
-        return self.contains(key)
+    def __contains__(self, key: object) -> bool:
+        return key in self._key_to_id
 
 
 class SparseEmbeddingIndex[K: Hashable]:

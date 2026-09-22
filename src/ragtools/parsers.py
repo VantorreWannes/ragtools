@@ -17,26 +17,26 @@ class Parser[D, V](Protocol):
 
 @dataclass(slots=True)
 class CsvFileElementParser:
-    def units(self, data: Path) -> tuple[Element, ...]:
-        return tuple(partition_csv(str(data)))
+    def units(self, data: Path) -> list[Element]:
+        return partition_csv(str(data))
 
 
 @dataclass(slots=True)
 class MdFileElementParser:
-    def units(self, data: Path) -> tuple[Element, ...]:
-        return tuple(partition_md(str(data)))
+    def units(self, data: Path) -> list[Element]:
+        return partition_md(str(data))
 
 
 @dataclass(slots=True)
 class PdfFileElementParser:
-    def units(self, data: Path) -> tuple[Element, ...]:
-        return tuple(partition_pdf(str(data)))
+    def units(self, data: Path) -> list[Element]:
+        return partition_pdf(str(data))
 
 
 @dataclass(slots=True)
 class TextFileElementParser:
-    def units(self, data: Path) -> tuple[Element, ...]:
-        return tuple(partition_text(str(data)))
+    def units(self, data: Path) -> list[Element]:
+        return partition_text(str(data))
 
 
 @dataclass(slots=True)
@@ -50,6 +50,7 @@ class ElementPageIndexParser:
     def units(self, data: Element) -> int:
         page_index = data.metadata.page_number
         return page_index if page_index is not None else -1
+
 
 @dataclass
 class ChunkParser:
