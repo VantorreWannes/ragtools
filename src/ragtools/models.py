@@ -30,6 +30,10 @@ class Chunker(Protocol):
     def chunks(self, text: str) -> list[str]: ...
 
 
+class FileReader(Protocol):
+    def __call__(self, path: Path) -> list[str]: ...
+
+
 @dataclass
 class SentenceTransformerEmbedder:
     model_name: str
