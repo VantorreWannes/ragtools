@@ -12,7 +12,7 @@ from unstructured.partition.pdf import partition_pdf
 from unstructured.partition.text import partition_text
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class SentenceTransformerEmbedder:
     model_name: str
 
@@ -24,7 +24,7 @@ class SentenceTransformerEmbedder:
         return self._model.encode(text, normalize_embeddings=True).tolist()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class SpladeEmbedder:
     model_name: str
 
@@ -38,7 +38,7 @@ class SpladeEmbedder:
         return dict(decoded)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class CrossEncoderScorer:
     model_name: str
 
@@ -50,7 +50,7 @@ class CrossEncoderScorer:
         return float(self._model.predict((query, document)).tolist())
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class TransformersGenerator:
     model_name: str
     max_tokens: int
@@ -65,7 +65,7 @@ class TransformersGenerator:
         return str(outputs[0]["generated_text"][-1]["content"])
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class SemanticChunker:
     model_name: str
     chunk_size: int
