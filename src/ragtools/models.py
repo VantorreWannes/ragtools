@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -20,8 +21,11 @@ class SentenceTransformerEmbedder:
     def _model(self) -> SentenceTransformer:
         return SentenceTransformer(self.model_name)
 
-    def __call__(self, text: str) -> list[float]:
+    def embed(self, text: str) -> list[float]:
         return self._model.encode(text, normalize_embeddings=True).tolist()
+
+    def embed_all(self, texts: Sequence[str]) -> list[list[float]]:
+        return self._model.encode(texts, normalize_embeddings=True).tolist()
 
 
 @dataclass
@@ -32,10 +36,20 @@ class SpladeEmbedder:
     def _model(self) -> SparseEncoder:
         return SparseEncoder(self.model_name)
 
-    def __call__(self, text: str) -> dict[str, float]:
+    def embed(self, text: str) -> dict[str, float]:
         embeddings = self._model.encode(text)
         decoded = cast(list[tuple[str, float]], [*self._model.decode(embeddings)])
         return dict(decoded)
+
+    def embed_all(self, texts: Sequence[str]) -> list[dict[str, float]]:
+        embeddings = self._model.encode(list(texts))
+        decoded_batch = self._model.decode(embeddings)
+        results: list[dict[str, float]] = []
+        for item in decoded_batch:
+            pairs = cast(list[tuple[str, float]], list(item))
+            results.append({token: float(weight) for token, weight in pairs if weight})
+
+        return results
 
 
 @dataclass
