@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
 from semantic_chunker import TextSplitter, get_chunker
 from sentence_transformers import CrossEncoder, SentenceTransformer, SparseEncoder
@@ -11,6 +11,23 @@ from unstructured.partition.csv import partition_csv
 from unstructured.partition.md import partition_md
 from unstructured.partition.pdf import partition_pdf
 from unstructured.partition.text import partition_text
+
+
+class Embedder[V](Protocol):
+    def embed(self, text: str) -> V: ...
+    def embed_all(self, texts: Sequence[str]) -> list[V]: ...
+
+
+class Scorer(Protocol):
+    def score(self, query: str, text: str) -> float: ...
+
+
+class Generator(Protocol):
+    def reply(self, prompt: str) -> str: ...
+
+
+class Chunker(Protocol):
+    def chunks(self, text: str) -> list[str]: ...
 
 
 @dataclass
@@ -60,8 +77,8 @@ class CrossEncoderScorer:
     def _model(self) -> CrossEncoder:
         return CrossEncoder(self.model_name)
 
-    def __call__(self, query: str, document: str) -> float:
-        return float(self._model.predict((query, document)).tolist())
+    def score(self, query: str, text: str) -> float:
+        return float(self._model.predict((query, text)).tolist())
 
 
 @dataclass
@@ -73,7 +90,7 @@ class TransformersGenerator:
     def _pipeline(self) -> TextGenerationPipeline:
         return pipeline("text-generation", model=self.model_name)
 
-    def __call__(self, prompt: str) -> str:
+    def reply(self, prompt: str) -> str:
         chat = [{"role": "user", "content": prompt}]
         outputs = self._pipeline(chat, max_new_tokens=self.max_tokens, do_sample=True)
         return str(outputs[0]["generated_text"][-1]["content"])
@@ -99,7 +116,7 @@ class SemanticChunker:
             ),
         )
 
-    def __call__(self, text: str) -> list[str]:
+    def chunks(self, text: str) -> list[str]:
         return list(self._chunker.chunks(text))
 
 
